@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WellCharted · Child Health Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:'Lato',sans-serif;background:#f0f4f8;color:#1a2535;font-size:15px}
+.app{display:flex;height:100vh;overflow:hidden}
+
+/* Sidebar */
+.sidebar{width:255px;min-width:255px;background:#1e3a5f;color:#fff;display:flex;flex-direction:column;overflow:hidden;transition:transform .3s;z-index:100}
+.sidebar-header{padding:16px 14px 12px;border-bottom:1px solid rgba(255,255,255,.1)}
+.app-title{font-family:'Nunito',sans-serif;font-size:15px;font-weight:800;color:#fff;display:flex;align-items:center;gap:7px}
+.app-subtitle{font-size:10px;color:rgba(255,255,255,.4);margin-top:2px}
+.child-selector{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.1)}
+.sel-label{font-size:10px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+.child-btn{width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:8px;color:#fff;padding:8px 11px;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-family:'Lato',sans-serif}
+.child-btn:hover{background:rgba(255,255,255,.14)}
+.child-dropdown{background:#152d4a;border:1px solid rgba(255,255,255,.12);border-radius:8px;margin-top:5px;overflow:hidden;display:none}
+.child-list{max-height:200px;overflow-y:auto}
+.child-row{padding:8px 11px;display:flex;align-items:center;gap:9px;cursor:pointer;font-size:13px;color:rgba(255,255,255,.75)}
+.child-row:hover,.child-row.active{background:rgba(255,255,255,.1);color:#fff}
+.child-row.active{background:rgba(55,138,221,.25)}
+.avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;font-family:'Nunito',sans-serif}
+.child-row-actions{margin-left:auto;display:flex;gap:4px}
+.child-del-btn{background:none;border:none;color:rgba(255,100,100,.6);cursor:pointer;font-size:13px;padding:2px 4px;border-radius:4px}
+.child-del-btn:hover{color:#ff6464;background:rgba(255,100,100,.15)}
+.add-child-btn{width:calc(100% - 18px);margin:7px 9px;background:rgba(255,255,255,.06);border:1px dashed rgba(255,255,255,.25);border-radius:8px;color:rgba(255,255,255,.65);padding:7px;font-size:12px;cursor:pointer;font-family:'Lato',sans-serif}
+.add-child-btn:hover{background:rgba(255,255,255,.12);color:#fff}
+.nav-sec{flex:1;overflow-y:auto;padding:8px 0}
+.nav-grp{font-size:10px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.09em;padding:9px 14px 3px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:9px 14px;cursor:pointer;font-size:13px;color:rgba(255,255,255,.65);transition:background .15s;border-left:3px solid transparent}
+.nav-item:hover{background:rgba(255,255,255,.07);color:#fff}
+.nav-item.active{background:rgba(55,138,221,.2);color:#fff;border-left-color:#5aabff}
+.nav-icon{font-size:14px;width:18px;text-align:center;flex-shrink:0}
+.sidebar-footer{padding:10px 13px;border-top:1px solid rgba(255,255,255,.1);font-size:9px;color:rgba(255,255,255,.28);line-height:1.5}
+
+/* Main */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.topbar{background:#fff;border-bottom:1px solid #e2e8f0;padding:12px 22px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:10px}
+.page-title{font-family:'Nunito',sans-serif;font-size:17px;font-weight:800;color:#1e3a5f}
+.page-sub{font-size:11px;color:#64748b;margin-top:1px}
+.topbar-right{display:flex;gap:7px;flex-shrink:0;align-items:center}
+.btn{padding:7px 14px;border-radius:8px;font-size:13px;cursor:pointer;border:1px solid #cbd5e1;background:#fff;color:#334155;font-family:'Lato',sans-serif;font-weight:700;transition:background .15s}
+.btn:hover{background:#f1f5f9}
+.btn-primary{background:#1e3a5f;color:#fff;border-color:#1e3a5f}
+.btn-primary:hover{background:#2a4d7a}
+.btn-danger{background:#fee2e2;color:#991b1b;border-color:#fecaca}
+.btn-danger:hover{background:#fecaca}
+.btn-sm{padding:5px 11px;font-size:12px}
+.menu-toggle{display:none;background:none;border:1px solid #cbd5e1;border-radius:8px;padding:5px 9px;cursor:pointer;font-size:17px;color:#334155}
+.content{flex:1;overflow-y:auto;padding:22px;background:#f0f4f8}
+
+/* Welcome */
+.welcome{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;text-align:center;gap:12px}
+.welcome h2{font-family:'Nunito',sans-serif;font-size:24px;font-weight:800;color:#1e3a5f}
+.welcome p{font-size:14px;color:#64748b;max-width:300px;line-height:1.7}
+
+/* Cards */
+.card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;margin-bottom:16px}
+.card-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.card-title{font-family:'Nunito',sans-serif;font-size:14px;font-weight:800;color:#1e3a5f}
+
+/* Stats */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:18px}
+.stat-card{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px}
+.stat-lbl{font-size:10px;color:#64748b;margin-bottom:4px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.stat-val{font-family:'Nunito',sans-serif;font-size:24px;font-weight:800;color:#1e3a5f}
+
+/* Table */
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;font-size:13px;min-width:480px}
+th{text-align:left;font-size:11px;font-weight:700;color:#64748b;padding:7px 9px;border-bottom:2px solid #e2e8f0;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+td{padding:9px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#f8fafc}
+.empty-row td{text-align:center;color:#94a3b8;padding:28px;font-size:13px}
+
+/* Badges */
+.badge{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px}
+.badge-success{background:#dcfce7;color:#166534}
+.badge-warning{background:#fef9c3;color:#854d0e}
+.badge-danger{background:#fee2e2;color:#991b1b}
+.badge-info{background:#dbeafe;color:#1e40af}
+.badge-neutral{background:#f1f5f9;color:#475569}
+
+/* Del btn */
+.del-btn{background:none;border:none;cursor:pointer;color:#cbd5e1;font-size:14px;padding:2px 5px;border-radius:4px}
+.del-btn:hover{color:#ef4444;background:#fee2e2}
+
+/* Profile */
+.prof-card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:26px}
+.prof-avatar{width:68px;height:68px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;font-family:'Nunito',sans-serif;margin-bottom:10px}
+.prof-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px;padding-top:16px;border-top:1px solid #e2e8f0}
+.prof-field label{font-size:10px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:2px}
+.prof-field span{font-size:14px}
+
+/* Modal */
+.modal-bg{position:fixed;inset:0;background:rgba(15,23,42,.5);display:flex;align-items:center;justify-content:center;z-index:999;padding:14px}
+.modal{background:#fff;border-radius:14px;padding:24px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.modal-title{font-family:'Nunito',sans-serif;font-size:17px;font-weight:800;color:#1e3a5f;margin-bottom:18px}
+.fg{margin-bottom:12px}
+.fg label{display:block;font-size:11px;font-weight:700;color:#475569;margin-bottom:4px;text-transform:uppercase;letter-spacing:.03em}
+.fg input,.fg select,.fg textarea{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:8px 11px;font-size:14px;background:#fff;color:#1a2535;font-family:'Lato',sans-serif;transition:border-color .15s}
+.fg input:focus,.fg select:focus,.fg textarea:focus{outline:none;border-color:#378ADD;box-shadow:0 0 0 3px rgba(55,138,221,.12)}
+.fg textarea{min-height:65px;resize:vertical}
+.modal-actions{display:flex;gap:9px;justify-content:flex-end;margin-top:18px;padding-top:14px;border-top:1px solid #e2e8f0}
+
+/* Section */
+.section{display:none}
+.section.active{display:block}
+
+/* Chart */
+.chart-wrap{position:relative;height:260px;width:100%}
+
+/* Vacc schedule */
+.vacc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(95px,1fr));gap:7px;margin-top:4px}
+.vacc-col{background:#f8fafc;border:1px solid #e2e8f0;border-radius:9px;padding:9px 7px}
+.vacc-age{font-family:'Nunito',sans-serif;font-size:11px;font-weight:800;color:#1e3a5f;text-align:center;margin-bottom:7px;padding-bottom:5px;border-bottom:1px solid #e2e8f0}
+.vacc-pill{font-size:10px;background:#dbeafe;color:#1e40af;border-radius:5px;padding:2px 5px;margin-bottom:3px;text-align:center;font-weight:700;line-height:1.3}
+.vacc-pill.done{background:#dcfce7;color:#166534}
+
+/* WC tabs */
+.wc-tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+.wc-tab{min-width:58px;padding:9px 7px;border:2px solid #e2e8f0;border-radius:12px;background:#fff;cursor:pointer;text-align:center;transition:all .15s;font-family:'Nunito',sans-serif}
+.wc-tab:hover{border-color:#378ADD;background:#eff6ff}
+.wc-tab.active{border-color:#1e3a5f;background:#1e3a5f;color:#fff}
+.wc-tab.done{border-color:#166534}
+.wc-tab.done.active{background:#166534;border-color:#166534}
+.wc-tab-lbl{font-size:12px;font-weight:800}
+.wc-tab-sub{font-size:9px;opacity:.7;margin-top:1px}
+.wc-panel{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px}
+.wc-sec{font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;color:#1e3a5f;text-transform:uppercase;letter-spacing:.05em;margin:16px 0 9px;padding-bottom:5px;border-bottom:2px solid #e2e8f0}
+
+/* Milestone tabs */
+.ms-tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+.ms-tab{min-width:65px;padding:9px 7px;border:2px solid #e2e8f0;border-radius:12px;background:#fff;cursor:pointer;text-align:center;transition:all .15s;font-family:'Nunito',sans-serif}
+.ms-tab:hover{border-color:#7c3aed;background:#f5f3ff}
+.ms-tab.active{border-color:#7c3aed;background:#7c3aed;color:#fff}
+.ms-tab.done{border-color:#166534}
+.ms-tab.done.active{background:#166534;border-color:#166534}
+.ms-panel{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px}
+.ms-cat-title{font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;color:#7c3aed;text-transform:uppercase;letter-spacing:.05em;margin-bottom:9px}
+.ms-item{display:flex;align-items:flex-start;gap:9px;padding:7px 0;border-bottom:1px solid #f1f5f9}
+.ms-item:last-child{border-bottom:none}
+.ms-check{width:22px;height:22px;min-width:22px;border-radius:6px;border:2px solid #cbd5e1;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;transition:all .15s;background:#fff;user-select:none}
+.ms-check.checked{background:#166534;border-color:#166534;color:#fff}
+.ms-check:hover{border-color:#7c3aed}
+.ms-text{font-size:13px;line-height:1.5;flex:1}
+.concern-btn{font-size:10px;background:#f1f5f9;color:#94a3b8;border:none;border-radius:5px;padding:2px 7px;cursor:pointer;margin-left:6px;font-family:'Lato',sans-serif}
+.concern-btn.flagged{background:#fee2e2;color:#991b1b}
+
+/* Diet toggles */
+.diet-row{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}
+.diet-btn{padding:7px 13px;border:2px solid #e2e8f0;border-radius:20px;background:#fff;cursor:pointer;font-size:12px;font-weight:700;font-family:'Nunito',sans-serif;transition:all .15s;color:#475569;user-select:none}
+.diet-btn:hover{border-color:#378ADD;color:#1e3a5f}
+.diet-btn.active{border-color:#1e3a5f;background:#1e3a5f;color:#fff}
+
+/* Photo upload */
+.photo-area{border:2px dashed #cbd5e1;border-radius:10px;padding:18px;text-align:center;cursor:pointer;transition:border-color .15s;margin-top:8px}
+.photo-area:hover{border-color:#378ADD;background:#eff6ff}
+.photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:7px;margin-top:9px}
+.photo-thumb{position:relative;border-radius:7px;overflow:hidden;aspect-ratio:1;background:#f1f5f9}
+.photo-thumb img{width:100%;height:100%;object-fit:cover}
+.photo-del{position:absolute;top:3px;right:3px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:50%;width:19px;height:19px;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1}
+
+/* Sick cards */
+.sick-card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:11px}
+.sick-card-hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:9px}
+.food-tag{display:inline-block;background:#dbeafe;color:#1e40af;border-radius:5px;padding:2px 7px;font-size:11px;font-weight:700;margin:2px}
+.food-tag.reaction{background:#fee2e2;color:#991b1b}
+.reaction-card{background:#fff7ed;border:1px solid #fed7aa;border-radius:9px;padding:12px;margin-bottom:9px;position:relative}
+
+/* Ref tabs */
+.ref-tabs{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:18px}
+.ref-tab{padding:8px 14px;border:2px solid #e2e8f0;border-radius:20px;background:#fff;cursor:pointer;font-size:12px;font-weight:700;font-family:'Nunito',sans-serif;transition:all .15s;color:#475569}
+.ref-tab:hover{border-color:#ef4444;color:#991b1b}
+.ref-tab.active{border-color:#ef4444;background:#ef4444;color:#fff}
+.ref-alert{border-radius:9px;padding:12px 15px;margin-bottom:12px;font-size:13px;line-height:1.7}
+.ref-alert-red{background:#fff1f2;border-left:4px solid #ef4444;color:#7f1d1d}
+.ref-alert-yellow{background:#fefce8;border-left:4px solid #eab308;color:#713f12}
+.ref-alert-green{background:#f0fdf4;border-left:4px solid #22c55e;color:#14532d}
+.ref-alert-blue{background:#eff6ff;border-left:4px solid #3b82f6;color:#1e3a8a}
+.ref-sec{font-family:'Nunito',sans-serif;font-size:14px;font-weight:800;color:#1e3a5f;margin:16px 0 9px;display:flex;align-items:center;gap:7px}
+.fever-tbl{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:14px}
+.fever-tbl th{background:#1e3a5f;color:#fff;padding:9px 11px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+.fever-tbl td{padding:9px 11px;border-bottom:1px solid #e2e8f0;vertical-align:top;line-height:1.5}
+.fever-tbl tr:last-child td{border-bottom:none}
+.fever-tbl .watch{background:#f0fdf4}
+.fever-tbl .call{background:#fefce8}
+.fever-tbl .er{background:#fff1f2}
+.dose-tbl{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:11px}
+.dose-tbl th{background:#f1f5f9;color:#475569;padding:7px 9px;text-align:left;font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid #e2e8f0}
+.dose-tbl td{padding:7px 9px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+.dose-tbl tr:nth-child(even) td{background:#f8fafc}
+.chk-item{display:flex;align-items:flex-start;gap:9px;padding:7px 0;border-bottom:1px solid #f1f5f9;font-size:13px;line-height:1.5}
+.chk-item:last-child{border-bottom:none}
+.chk-circle{width:20px;height:20px;min-width:20px;border-radius:50%;background:#dcfce7;color:#166534;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;margin-top:1px}
+.kit-cat{font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;color:#1e3a5f;text-transform:uppercase;letter-spacing:.05em;margin:14px 0 7px;padding-bottom:5px;border-bottom:2px solid #e2e8f0}
+.emerg-box{background:#1e3a5f;color:#fff;border-radius:11px;padding:16px;margin-bottom:12px}
+.emerg-box h4{font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;margin-bottom:9px;color:#5aabff}
+.emerg-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.1);font-size:13px}
+.emerg-row:last-child{border-bottom:none}
+.emerg-row input{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:6px;color:#fff;padding:4px 9px;font-size:13px;width:190px;font-family:'Lato',sans-serif}
+.emerg-row input::placeholder{color:rgba(255,255,255,.35)}
+.poison-banner{background:#ef4444;color:#fff;border-radius:8px;padding:9px 14px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;text-align:center;margin-bottom:12px}
+.ref-footer{margin-top:12px;padding-top:10px;border-top:1px solid #e2e8f0;font-size:10px;color:#94a3b8;text-align:center}
+
+/* Print tip */
+/* Allergy sub-tabs */
+.allergy-tab{padding:8px 14px;border:2px solid #e2e8f0;border-radius:20px;background:#fff;cursor:pointer;font-size:12px;font-weight:700;font-family:'Nunito',sans-serif;transition:all .15s;color:#475569}
+.allergy-tab:hover{border-color:#ef4444;color:#991b1b}
+.allergy-tab.active{border-color:#991b1b;background:#991b1b;color:#fff}
+
+.print-tip{font-size:10px;color:#94a3b8;text-align:right;margin-top:3px}
+
+@media(max-width:680px){
+  .sidebar{position:fixed;top:0;left:0;height:100vh;transform:translateX(-100%)}
+  .sidebar.open{transform:translateX(0);box-shadow:4px 0 30px rgba(0,0,0,.3)}
+  .menu-toggle{display:block}
+  .content{padding:14px}
+  .topbar{padding:11px 14px}
+  .stats-grid{grid-template-columns:1fr 1fr}
+  .prof-grid{grid-template-columns:1fr}
+  .wc-tabs,.ms-tabs{gap:6px}
+  .fever-tbl,.dose-tbl{min-width:480px}
+}
+@media print{
+  .sidebar,.topbar-right,.del-btn,.menu-toggle,.wc-tabs,.ms-tabs,.photo-area,.btn,.ref-tabs,.diet-row,.child-selector,.nav-sec,.nav-grp{display:none!important}
+  .app{display:block}.main{overflow:visible}.content{padding:0;overflow:visible;background:#fff}
+  .card,.wc-panel,.ms-panel{break-inside:avoid;box-shadow:none;border:1px solid #ccc}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- SIDEBAR -->
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="app-title">&#128578; WellCharted</div>
+    <div class="app-subtitle">Child Health Tracker · Birth to Age 5</div>
+  </div>
+  <div class="child-selector">
+    <div class="sel-label">Active child</div>
+    <button class="child-btn" onclick="toggleDrop()">
+      <span id="active-lbl">Select a child</span><span>&#9660;</span>
+    </button>
+    <div class="child-dropdown" id="child-drop">
+      <div class="child-list" id="child-list"></div>
+      <button class="add-child-btn" onclick="openModal('_new')">+ Add child</button>
+    </div>
+  </div>
+  <div class="nav-sec">
+    <div class="nav-grp">Overview</div>
+    <div class="nav-item active" id="nav-overview" onclick="go('overview')"><span class="nav-icon">&#128202;</span>Overview</div>
+    <div class="nav-item" id="nav-profile" onclick="go('profile')"><span class="nav-icon">&#128100;</span>Profile</div>
+    <div class="nav-grp">Health Records</div>
+    <div class="nav-item" id="nav-growth" onclick="go('growth')"><span class="nav-icon">&#128208;</span>Growth</div>
+    <div class="nav-item" id="nav-vaccinations" onclick="go('vaccinations')"><span class="nav-icon">&#128137;</span>Vaccinations</div>
+    <div class="nav-item" id="nav-milestones" onclick="go('milestones')"><span class="nav-icon">&#11088;</span>Milestones</div>
+    <div class="nav-grp">Visits</div>
+    <div class="nav-item" id="nav-doctors" onclick="go('doctors')"><span class="nav-icon">&#128203;</span>Well-Child Visits</div>
+    <div class="nav-item" id="nav-sick" onclick="go('sick')"><span class="nav-icon">&#129874;</span>Sick Visits</div>
+    <div class="nav-item" id="nav-specialists" onclick="go('specialists')"><span class="nav-icon">&#129657;</span>Specialist Visits</div>
+    <div class="nav-item" id="nav-urgent" onclick="go('urgent')"><span class="nav-icon">&#128680;</span>Urgent / ER Visits</div>
+    <div class="nav-grp">Medications &amp; Allergies</div>
+    <div class="nav-item" id="nav-medications" onclick="go('medications')"><span class="nav-icon">&#128138;</span>Medications</div>
+    <div class="nav-item" id="nav-allergies" onclick="go('allergies')"><span class="nav-icon">&#9888;&#65039;</span>Allergies</div>
+    <div class="nav-grp">Reference</div>
+    <div class="nav-item" id="nav-sickref" onclick="go('sickref')"><span class="nav-icon">&#128209;</span>Sick Day Guide</div>
+  </div>
+  <div class="sidebar-footer">&#9888; <strong>Educational use only.</strong> Does not replace the advice or care of your primary care provider. Always consult your healthcare provider.<br><br>Created by a Family Nurse Practitioner, FNP-C · AAP &amp; Bright Futures Guidelines</div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:10px">
+      <button class="menu-toggle" onclick="toggleSidebar()">&#9776;</button>
+      <div>
+        <div class="page-title" id="page-title">WellCharted</div>
+        <div class="page-sub" id="page-sub">Select or add a child to begin</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div>
+        <button class="btn btn-sm" onclick="doPrint()">&#128438; Print / PDF</button>
+        <div class="print-tip">Use Ctrl+P or &#8984;+P</div>
+      </div>
+      <button class="btn btn-primary btn-sm" id="add-btn" onclick="handleAdd()" style="display:none">+ Add Record</button>
+    </div>
+  </div>
+
+  <div class="content">
+    <div id="no-child" class="welcome">
+      <div style="font-size:58px">&#128578;</div>
+      <h2>Welcome to WellCharted</h2>
+      <p>Add a child profile to start tracking their health journey from birth to age 5.</p>
+      <button class="btn btn-primary" style="margin-top:8px" onclick="openModal('_new')">+ Add your first child</button>
+    </div>
+
+    <div class="section" id="sec-overview">
+      <div class="stats-grid" id="stats-grid"></div>
+      <div class="card">
+        <div class="card-hdr"><div class="card-title">&#128203; CDC Immunization Schedule (Birth–5 yrs)</div></div>
+        <div id="vacc-schedule"></div>
+      </div>
+      <div class="card">
+        <div class="card-hdr"><div class="card-title">&#128337; Recent activity</div></div>
+        <div id="recent-activity"></div>
+      </div>
+    </div>
+
+    <div class="section" id="sec-profile">
+      <div class="prof-card" id="profile-content"></div>
+    </div>
+
+    <div class="section" id="sec-growth">
+      <div class="card">
+        <div class="card-hdr"><div class="card-title">&#128208; Weight chart (lbs)</div></div>
+        <div class="chart-wrap"><canvas id="chart-weight"></canvas></div>
+        <div id="no-chart-weight" style="height:220px;display:none;align-items:center;justify-content:center;color:#94a3b8;font-size:13px">Add growth records below to see the weight chart</div>
+      </div>
+      <div class="card">
+        <div class="card-hdr"><div class="card-title">&#128208; Height chart (inches)</div></div>
+        <div class="chart-wrap"><canvas id="chart-height"></canvas></div>
+        <div id="no-chart-height" style="height:220px;display:none;align-items:center;justify-content:center;color:#94a3b8;font-size:13px">Add growth records below to see the height chart</div>
+      </div>
+      <div class="card">
+        <div class="card-hdr"><div class="card-title">&#128208; Head circumference chart (cm) — Birth to 2 years</div></div>
+        <div class="chart-wrap"><canvas id="chart-head"></canvas></div>
+        <div id="no-chart-head" style="height:180px;display:none;align-items:center;justify-content:center;color:#94a3b8;font-size:13px">Head circumference tracked through 24 months. Add records below.</div>
+      </div>
+      <div class="card">
+        <div class="card-hdr"><div class="card-title">Growth records</div></div>
+        <div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Age</th><th>Weight (lbs)</th><th>Height (in)</th><th>Head Circ. (cm)</th><th>BMI</th><th>Notes</th><th></th></tr></thead><tbody id="tb-growth"></tbody></table></div>
+        <div style="margin-top:12px;padding:10px 12px;background:#eff6ff;border-radius:8px;font-size:12px;color:#1e40af;line-height:1.6"><strong>CDC Note:</strong> Percentiles are calculated at well-child visits. BMI = weight(lbs) × 703 ÷ height(in)². Head circumference is tracked from birth through 24 months. Consult your provider for interpretation.</div>
+      </div>
+    </div>
+
+    <div class="section" id="sec-vaccinations">
+      <div class="card">
+        <div class="card-hdr"><div class="card-title">&#128137; Vaccination checklist</div></div>
+        <div id="vacc-checklist"></div>
+      </div>
+      <div class="card">
+        <div class="card-hdr"><div class="card-title">Administered vaccinations log</div></div>
+        <div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Vaccine</th><th>Dose #</th><th>Provider</th><th>Next Due</th><th>Notes</th><th></th></tr></thead><tbody id="tb-vaccinations"></tbody></table></div>
+      </div>
+    </div>
+
+    <div class="section" id="sec-milestones">
+      <div class="card">
+        <div class="card-hdr"><div class="card-title">&#11088; Developmental milestones by age</div></div>
+        <div class="ms-tabs" id="ms-tabs"></div>
+        <div class="ms-panel" id="ms-panel"></div>
+      </div>
+    </div>
+
+    <div class="section" id="sec-doctors">
+      <div class="card">
+        <div class="card-hdr"><div class="card-title">&#128203; Well-child visits</div></div>
+        <div class="wc-tabs" id="wc-tabs"></div>
+        <div class="wc-panel" id="wc-panel"></div>
+      </div>
+    </div>
+
+    <div class="section" id="sec-sick">
+      <div class="card">
+        <div class="card-hdr">
+          <div class="card-title">&#129874; Sick visits &amp; health concerns</div>
+          <button class="btn btn-primary btn-sm" onclick="openModal('sick')">+ Add sick visit</button>
+        </div>
+        <div id="sick-list"></div>
+      </div>
+    </div>
+
+    <div class="section" id="sec-specialists">
+      <div class="card">
+        <div class="card-hdr"><div class="card-title">&#129657; Specialist visits</div></div>
+        <div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Specialist</th><th>Specialty</th><th>Reason</th><th>Findings</th><th>Follow-up</th><th></th></tr></thead><tbody id="tb-specialists"></tbody></table></div>
+      </div>
+    </div>
+
+    <div class="section" id="sec-urgent">
+      <div class="card">
+        <div class="card-hdr"><div class="card-title">&#128680; Urgent / ER visits</div></div>
+        <div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Facility</th><th>Type</th><th>Reason</th><th>Treatment</th><th>Outcome</th><th></th></tr></thead><tbody id="tb-urgent"></tbody></table></div>
+      </div>
+    </div>
+
+    <div class="section" id="sec-medications">
+      <div class="card">
+        <div class="card-hdr"><div class="card-title">&#128138; Medications</div></div>
+        <div class="tbl-wrap"><table><thead><tr><th>Name</th><th>Dosage</th><th>Frequency</th><th>Start</th><th>End</th><th>Prescriber</th><th>Status</th><th></th></tr></thead><tbody id="tb-medications"></tbody></table></div>
+      </div>
+    </div>
+
+    <div class="section" id="sec-allergies">
+      <div class="card">
+        <div class="card-hdr"><div class="card-title">&#9888;&#65039; Allergies &amp; reactions</div></div>
+        <div style="display:flex;gap:8px;margin-bottom:16px" id="allergy-tabs">
+          <button class="allergy-tab active" id="atab-medication" onclick="switchAllergyTab('medication')">&#128138; Medication allergies</button>
+          <button class="allergy-tab" id="atab-food" onclick="switchAllergyTab('food')">&#127860; Food reactions</button>
+          <button class="allergy-tab" id="atab-environmental" onclick="switchAllergyTab('environmental')">&#127807; Environmental</button>
+        </div>
+        <div id="allergy-panel"></div>
+      </div>
+    </div>
+
+    <div class="section" id="sec-sickref">
+      <div id="sickref-content"></div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-bg" id="modal-bg" onclick="bgClick(event)" style="display:none">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-title" id="modal-title">Add record</div>
+    <div id="modal-body"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveModal()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+
+// ══════════════════════════════════════════════════════
+// WELLCHARTED CHILD HEALTH TRACKER
+// Clean rewrite — simple global delete functions only
+// ══════════════════════════════════════════════════════
+
+const STORE = 'wcht_v7';
+let db = (()=>{ try{ return JSON.parse(localStorage.getItem(STORE))||{children:[],activeId:null}; }catch(e){ return {children:[],activeId:null}; }})();
+let curSec='overview', curWcTab=null, curMsTab=null, curRefTab='fever', curAllergyTab='medication';
+let dropOpen=false, modalSec=null, modalPhotos=[];
+let chartW=null, chartH=null, chartHC=null;
+const COLORS=['#1D9E75','#378ADD','#D85A30','#D4537E','#BA7517','#7F77DD'];
+
+function save(){ try{ localStorage.setItem(STORE, JSON.stringify(db)); }catch(e){} }
+function child(){ return db.children.find(c=>c.id===db.activeId)||null; }
+function mkChild(id){ return {id,name:'',dob:'',gender:'',bloodType:'',pediatrician:'',insurance:'',notes:'',growth:[],vaccinations:[],milestones:{},wcVisits:{},sick:[],specialists:[],urgent:[],medications:[],allergies:[]}; }
+
+// ══ GLOBAL DELETE FUNCTIONS (simple, no closures, no string tricks) ══
+function DEL(type, idx){
+  const c=child(); if(!c) return;
+  if(!Array.isArray(c[type])) return;
+  c[type].splice(idx,1); save(); go(curSec);
+}
+function DEL_CHILD(id){
+  const c=db.children.find(x=>x.id===id);
+  const name=c?(c.name||'this child'):'this child';
+  db.children=db.children.filter(x=>x.id!==id);
+  if(db.activeId===id) db.activeId=db.children.length?db.children[0].id:null;
+  save(); closeDrop();
+  if(db.activeId){ selectChild(db.activeId); }
+  else{ document.getElementById('active-lbl').textContent='Select a child'; document.getElementById('no-child').style.display='flex'; document.getElementById('add-btn').style.display='none'; document.getElementById('page-title').textContent='WellCharted'; document.getElementById('page-sub').textContent='Select or add a child to begin'; document.querySelectorAll('.section').forEach(el=>el.classList.remove('active')); }
+}
+function DEL_ALLERGY(idx){
+  const c=child(); if(!c) return;
+  c.allergies.splice(idx,1); save(); renderAllergyPanel(c);
+}
+function DEL_VACC(idx){
+  const c=child(); if(!c) return;
+  c.vaccinations.splice(idx,1); save(); renderVacc(c);
+}
+function DEL_GROWTH(idx){
+  const c=child(); if(!c) return;
+  c.growth.splice(idx,1); save(); renderGrowth(c);
+}
+function DEL_SICK(idx){
+  const c=child(); if(!c) return;
+  c.sick.splice(idx,1); save(); renderSick(c);
+}
+
+// ══ SIDEBAR ══
+function toggleSidebar(){ document.getElementById('sidebar').classList.toggle('open'); }
+document.addEventListener('click',e=>{
+  const sb=document.getElementById('sidebar');
+  if(sb.classList.contains('open')&&!sb.contains(e.target)&&!e.target.closest('.menu-toggle')) sb.classList.remove('open');
+  if(dropOpen&&!e.target.closest('.child-btn')&&!e.target.closest('.child-dropdown')) closeDrop();
+});
+
+function toggleDrop(){ dropOpen=!dropOpen; document.getElementById('child-drop').style.display=dropOpen?'block':'none'; if(dropOpen) renderChildList(); }
+function closeDrop(){ dropOpen=false; document.getElementById('child-drop').style.display='none'; }
+
+function renderChildList(){
+  const list=document.getElementById('child-list');
+  if(!db.children.length){ list.innerHTML='<div style="padding:9px 11px;font-size:12px;color:rgba(255,255,255,.4)">No children added yet</div>'; return; }
+  list.innerHTML=db.children.map((c,i)=>{
+    const init=(c.name||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2)||'?';
+    const cid=c.id;
+    return '<div class="child-row '+(c.id===db.activeId?'active':'')+'" onclick="selectChild(\''+cid+'\')">'+
+      '<div class="avatar" style="background:'+COLORS[i%COLORS.length]+';color:#fff">'+init+'</div>'+
+      '<span style="flex:1">'+(c.name||'Unnamed')+'</span>'+
+      '<button class="child-del-btn" title="Remove child" onclick="event.stopPropagation();DEL_CHILD(\''+cid+'\')">&#128465;</button>'+
+    '</div>';
+  }).join('');
+}
+
+function selectChild(id){
+  db.activeId=id; save(); closeDrop();
+  const c=child();
+  document.getElementById('active-lbl').textContent=c?(c.name||'Unnamed'):'Select a child';
+  document.getElementById('no-child').style.display='none';
+  curWcTab=null; curMsTab=null; go(curSec);
+}
+
+// ══ NAVIGATION ══
+const TITLES={overview:'Overview',profile:'Profile',growth:'Growth',vaccinations:'Vaccinations',milestones:'Milestones',doctors:'Well-Child Visits',sick:'Sick Visits',specialists:'Specialist Visits',urgent:'Urgent / ER Visits',medications:'Medications',allergies:'Allergies',sickref:'Sick Day Guide'};
+
+function go(sec){
+  curSec=sec;
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
+  const ni=document.getElementById('nav-'+sec); if(ni) ni.classList.add('active');
+  document.querySelectorAll('.section').forEach(el=>el.classList.remove('active'));
+  document.getElementById('sidebar').classList.remove('open');
+  const addBtn=document.getElementById('add-btn');
+
+  if(sec==='sickref'){
+    document.getElementById('no-child').style.display='none';
+    addBtn.style.display='none';
+    document.getElementById('page-title').textContent=TITLES.sickref;
+    document.getElementById('page-sub').textContent='FNP-C · AAP & Bright Futures Guidelines';
+    document.getElementById('sec-sickref').classList.add('active');
+    renderSickRef(); return;
+  }
+  const c=child();
+  if(!c){ document.getElementById('no-child').style.display='flex'; addBtn.style.display='none'; document.getElementById('page-title').textContent='WellCharted'; document.getElementById('page-sub').textContent='Select or add a child to begin'; return; }
+  document.getElementById('no-child').style.display='none';
+  document.getElementById('page-title').textContent=TITLES[sec]||sec;
+  document.getElementById('page-sub').textContent=c.name+(c.dob?' · '+ageStr(c.dob):'');
+  const noAdd=['overview','milestones','doctors','sick','allergies'];
+  if(sec==='profile'){ addBtn.style.display='inline-block'; addBtn.textContent='✏️ Edit Profile'; }
+  else if(noAdd.includes(sec)){ addBtn.style.display='none'; }
+  else{ addBtn.style.display='inline-block'; addBtn.textContent='+ Add Record'; }
+  const el=document.getElementById('sec-'+sec); if(el) el.classList.add('active');
+  if(sec==='overview') renderOverview(c);
+  else if(sec==='profile') renderProfile(c);
+  else if(sec==='growth') renderGrowth(c);
+  else if(sec==='vaccinations') renderVacc(c);
+  else if(sec==='milestones') renderMilestones(c);
+  else if(sec==='doctors') renderWC(c);
+  else if(sec==='sick') renderSick(c);
+  else if(sec==='allergies') renderAllergyPanel(c);
+  else renderTable(sec,c);
+}
+function handleAdd(){ if(curSec==='profile') openModal('profile'); else openModal(curSec); }
+
+// ══ HELPERS ══
+function ageStr(dob){ if(!dob)return''; const mo=Math.floor((Date.now()-new Date(dob))/(1000*60*60*24*30.44)); if(mo<0)return''; return mo<24?mo+' months old':Math.floor(mo/12)+' years old'; }
+function ageAt(dob,date){ if(!dob||!date)return''; const mo=Math.floor((new Date(date)-new Date(dob))/(1000*60*60*24*30.44)); if(mo<0)return''; return mo<24?mo+' mo':Math.floor(mo/12)+' yr'; }
+function bmi(w,h){ const wn=parseFloat(w),hn=parseFloat(h); if(!wn||!hn)return'—'; return (wn*703/(hn*hn)).toFixed(1); }
+function sevBadge(v){ if(!v)return'—'; const m={Mild:'badge-success',Moderate:'badge-warning',Severe:'badge-danger'}; return '<span class="badge '+(m[v]||'badge-neutral')+'">'+v+'</span>'; }
+function statusBadge(v){ if(!v)return'—'; const m={Active:'badge-success',Completed:'badge-neutral',Discontinued:'badge-warning'}; return '<span class="badge '+(m[v]||'badge-info')+'">'+v+'</span>'; }
+
+// ══ VAX SCHEDULE ══
+const VAX=[
+  {age:'Birth',vaccines:['HepB (1st)']},
+  {age:'2 mo',vaccines:['HepB (2nd)','RV (1st)','DTaP (1st)','Hib (1st)','PCV (1st)','IPV (1st)']},
+  {age:'4 mo',vaccines:['RV (2nd)','DTaP (2nd)','Hib (2nd)','PCV (2nd)','IPV (2nd)']},
+  {age:'6 mo',vaccines:['HepB (3rd)','RV (3rd)','DTaP (3rd)','Hib (3rd)','PCV (3rd)','IPV (3rd)','Flu (annual)']},
+  {age:'12 mo',vaccines:['Hib (4th)','PCV (4th)','MMR (1st)','Varicella (1st)','HepA (1st)']},
+  {age:'15–18 mo',vaccines:['DTaP (4th)']},
+  {age:'18–24 mo',vaccines:['HepA (2nd)']},
+  {age:'4–6 yr',vaccines:['DTaP (5th)','IPV (4th)','MMR (2nd)','Varicella (2nd)','Flu (annual)']},
+];
+const NEXT_DOSE={
+  'Birth':{'HepB (1st)':'At 2 mo visit'},
+  '2 mo':{'HepB (2nd)':'At 6 mo visit','RV (1st)':'At 4 mo visit','DTaP (1st)':'At 4 mo visit','Hib (1st)':'At 4 mo visit','PCV (1st)':'At 4 mo visit','IPV (1st)':'At 4 mo visit'},
+  '4 mo':{'RV (2nd)':'At 6 mo visit','DTaP (2nd)':'At 6 mo visit','Hib (2nd)':'At 6 mo visit','PCV (2nd)':'At 6 mo visit','IPV (2nd)':'At 6 mo visit'},
+  '6 mo':{'HepB (3rd)':'Series complete','RV (3rd)':'Series complete','DTaP (3rd)':'At 15–18 mo','Hib (3rd)':'At 12 mo','PCV (3rd)':'At 12 mo','IPV (3rd)':'At 4–6 yr','Flu (annual)':'Next flu season'},
+  '12 mo':{'Hib (4th)':'Series complete','PCV (4th)':'Series complete','MMR (1st)':'At 4–6 yr','Varicella (1st)':'At 4–6 yr','HepA (1st)':'At 18–24 mo'},
+  '15–18 mo':{'DTaP (4th)':'At 4–6 yr'},
+  '18–24 mo':{'HepA (2nd)':'Series complete'},
+  '4–6 yr':{'DTaP (5th)':'Series complete','IPV (4th)':'Series complete','MMR (2nd)':'Series complete','Varicella (2nd)':'Series complete','Flu (annual)':'Next flu season'},
+};
+
+// ══ OVERVIEW ══
+function renderOverview(c){
+  document.getElementById('stats-grid').innerHTML=[
+    {l:'Growth records',v:(c.growth||[]).length},{l:'Vaccinations',v:(c.vaccinations||[]).length},
+    {l:'Well-child visits',v:Object.values(c.wcVisits||{}).filter(v=>v&&v.date).length},{l:'Sick visits',v:(c.sick||[]).length},
+    {l:'Specialist visits',v:(c.specialists||[]).length},{l:'Medications',v:(c.medications||[]).length},
+    {l:'Allergies',v:(c.allergies||[]).length},{l:'Urgent/ER visits',v:(c.urgent||[]).length},
+  ].map(s=>'<div class="stat-card"><div class="stat-lbl">'+s.l+'</div><div class="stat-val">'+s.v+'</div></div>').join('');
+  const given=new Set((c.vaccinations||[]).map(v=>(v.vaccine||'').trim().toLowerCase()));
+  document.getElementById('vacc-schedule').innerHTML='<div class="vacc-grid">'+VAX.map(col=>
+    '<div class="vacc-col"><div class="vacc-age">'+col.age+'</div>'+col.vaccines.map(v=>'<div class="vacc-pill '+(given.has(v.toLowerCase())?'done':'')+'">'+(given.has(v.toLowerCase())?'✓ ':'')+v+'</div>').join('')+'</div>'
+  ).join('')+'</div><div style="display:flex;gap:12px;margin-top:8px;font-size:11px;color:#64748b"><span style="display:flex;align-items:center;gap:4px"><span style="width:9px;height:9px;border-radius:50%;background:#166534;display:inline-block"></span>Given</span><span style="display:flex;align-items:center;gap:4px"><span style="width:9px;height:9px;border-radius:50%;background:#93c5fd;display:inline-block"></span>Upcoming</span></div>';
+  const all=[...(c.growth||[]).map(r=>({date:r.date,text:'Growth recorded',sec:'growth'})),...(c.vaccinations||[]).map(r=>({date:r.date,text:'Vaccination: '+(r.vaccine||''),sec:'vaccinations'})),...(c.sick||[]).map(r=>({date:r.date,text:'Sick visit: '+(r.reason||''),sec:'sick'})),...(c.specialists||[]).map(r=>({date:r.date,text:'Specialist: '+(r.specialist||''),sec:'specialists'})),...(c.urgent||[]).map(r=>({date:r.date,text:'Urgent/ER: '+(r.reason||''),sec:'urgent'}))].filter(r=>r.date).sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,10);
+  const ra=document.getElementById('recent-activity');
+  if(!all.length){ra.innerHTML='<div style="text-align:center;padding:24px;color:#94a3b8;font-size:13px">No records yet.</div>';return;}
+  ra.innerHTML='<div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Activity</th><th>Section</th></tr></thead><tbody>'+all.map(r=>'<tr><td>'+r.date+'</td><td>'+r.text+'</td><td><span class="badge badge-info" style="cursor:pointer" onclick="go(\''+r.sec+'\')">'+r.sec+'</span></td></tr>').join('')+'</tbody></table></div>';
+}
+
+// ══ PROFILE ══
+function renderProfile(c){
+  const init=(c.name||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2)||'?';
+  const cid=c.id;
+  document.getElementById('profile-content').innerHTML=
+    '<div class="prof-avatar" style="background:#1e3a5f;color:#fff">'+init+'</div>'+
+    '<div style="font-family:Nunito,sans-serif;font-size:20px;font-weight:800;color:#1e3a5f">'+(c.name||'—')+'</div>'+
+    '<div style="font-size:13px;color:#64748b;margin-top:2px">'+(c.dob?ageStr(c.dob):'Date of birth not set')+'</div>'+
+    '<div class="prof-grid">'+
+      '<div class="prof-field"><label>Date of birth</label><span>'+(c.dob||'—')+'</span></div>'+
+      '<div class="prof-field"><label>Gender</label><span>'+(c.gender||'—')+'</span></div>'+
+      '<div class="prof-field"><label>Blood type</label><span>'+(c.bloodType||'—')+'</span></div>'+
+      '<div class="prof-field"><label>Pediatrician</label><span>'+(c.pediatrician||'—')+'</span></div>'+
+      '<div class="prof-field"><label>Insurance</label><span>'+(c.insurance||'—')+'</span></div>'+
+    '</div>'+
+    (c.notes?'<div style="margin-top:16px;padding-top:14px;border-top:1px solid #e2e8f0"><div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Notes</div><div style="font-size:14px;line-height:1.6">'+c.notes+'</div></div>':'')+
+    '<div style="margin-top:18px;padding-top:14px;border-top:1px solid #e2e8f0"><button class="btn btn-danger btn-sm" onclick="DEL_CHILD(\''+cid+'\')">&#128465; Remove this child</button></div>';
+}
+
+// ══ GROWTH + CHARTS ══
+function mkChart(canvasId,noId,label,color,dataArr,labels){
+  const canvas=document.getElementById(canvasId);
+  const noEl=document.getElementById(noId);
+  const hasData=dataArr.some(v=>v!==null);
+  if(hasData){ canvas.style.display='block'; if(noEl)noEl.style.display='none'; return new Chart(canvas.getContext('2d'),{type:'line',data:{labels,datasets:[{label,data:dataArr,borderColor:color,backgroundColor:color.replace('rgb','rgba').replace(')',',0.08)'),tension:.35,pointRadius:5,pointHoverRadius:8,fill:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{y:{title:{display:true,text:label}}}}}); }
+  else{ canvas.style.display='none'; if(noEl)noEl.style.display='flex'; return null; }
+}
+
+function renderGrowth(c){
+  const data=(c.growth||[]).slice().sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const labels=data.map(r=>r.date);
+  if(chartW){chartW.destroy();chartW=null;} if(chartH){chartH.destroy();chartH=null;} if(chartHC){chartHC.destroy();chartHC=null;}
+  chartW=mkChart('chart-weight','no-chart-weight','Weight (lbs)','rgb(30,58,95)',data.map(r=>parseFloat(r.weight)||null),labels);
+  chartH=mkChart('chart-height','no-chart-height','Height (in)','rgb(29,158,117)',data.map(r=>parseFloat(r.height)||null),labels);
+  const headData=data.map(r=>{ const mo=Math.floor((new Date(r.date)-new Date(c.dob))/(1000*60*60*24*30.44)); return (mo>=0&&mo<=24&&r.headCirc)?parseFloat(r.headCirc)||null:null; });
+  chartHC=mkChart('chart-head','no-chart-head','Head Circ (cm)','rgb(139,92,246)',headData,labels);
+  const tb=document.getElementById('tb-growth');
+  if(!data.length){tb.innerHTML='<tr class="empty-row"><td colspan="8">No records yet.</td></tr>';return;}
+  tb.innerHTML=data.map((r,i)=>'<tr><td>'+(r.date||'—')+'</td><td>'+ageAt(c.dob,r.date)+'</td><td>'+(r.weight||'—')+'</td><td>'+(r.height||'—')+'</td><td>'+(r.headCirc||'—')+'</td><td>'+bmi(r.weight,r.height)+'</td><td>'+(r.notes||'—')+'</td><td><button class="del-btn" onclick="DEL_GROWTH('+i+')">&#128465;</button></td></tr>').join('');
+}
+
+// ══ VACCINATIONS ══
+function renderVacc(c){
+  const given=(c.vaccinations||[]).map(v=>(v.vaccine||'').trim().toLowerCase());
+  const dob=c.dob?new Date(c.dob):null;
+  const ageMonths=dob?Math.floor((Date.now()-dob)/(1000*60*60*24*30.44)):null;
+  const dueMoMap={'Birth':0,'2 mo':2,'4 mo':4,'6 mo':6,'12 mo':12,'15–18 mo':15,'18–24 mo':18,'4–6 yr':48};
+  let html='';
+  VAX.forEach(col=>{
+    const dueMo=dueMoMap[col.age];
+    const isDue=ageMonths!==null&&dueMo!==undefined&&ageMonths>=dueMo&&ageMonths<=dueMo+3;
+    html+='<div style="margin-bottom:13px"><div style="font-family:Nunito,sans-serif;font-size:12px;font-weight:800;color:#1e3a5f;margin-bottom:6px">'+(isDue?'<span class="badge badge-warning" style="margin-right:6px">Due now</span>':'')+col.age+'</div><div style="display:flex;flex-wrap:wrap;gap:7px">';
+    col.vaccines.forEach(v=>{
+      const done=given.includes(v.trim().toLowerCase());
+      const onclick='markVacc(\''+v.replace(/'/g,"\\'")+'\',' +'\''+col.age.replace(/'/g,"\\'")+'\''+')';
+      html+='<div onclick="'+onclick+'" title="'+(done?'Logged — remove below to undo':'Tap to mark as given')+'" style="background:'+(done?'#dcfce7':'#f8fafc')+';border:2px solid '+(done?'#86efac':'#e2e8f0')+';border-radius:7px;padding:5px 10px;font-size:11px;font-weight:700;color:'+(done?'#166534':'#475569')+';cursor:pointer">'+(done?'✓ ':'')+v+'</div>';
+    });
+    html+='</div></div>';
+  });
+  document.getElementById('vacc-checklist').innerHTML=html+'<div style="font-size:11px;color:#64748b;margin-top:8px;padding:9px 12px;background:#f8fafc;border-radius:8px">&#128137; <strong>Tap any vaccine to mark as given.</strong> Each dose tracked separately. Green = logged. Use trash icon below to undo.</div>';
+  const tb=document.getElementById('tb-vaccinations');
+  const data=c.vaccinations||[];
+  if(!data.length){tb.innerHTML='<tr class="empty-row"><td colspan="7">No vaccinations logged yet.</td></tr>';return;}
+  tb.innerHTML=data.map((r,i)=>'<tr><td>'+(r.date||'—')+'</td><td>'+(r.vaccine||'—')+'</td><td>'+(r.dose||'—')+'</td><td>'+(r.provider||'—')+'</td><td>'+(r.nextDue||'—')+'</td><td>'+(r.notes||'—')+'</td><td><button class="del-btn" onclick="DEL_VACC('+i+')">&#128465;</button></td></tr>').join('');
+}
+
+function markVacc(name,ageGroup){
+  const c=child(); if(!c) return;
+  if(!c.vaccinations) c.vaccinations=[];
+  const already=c.vaccinations.some(v=>(v.vaccine||'').trim().toLowerCase()===name.trim().toLowerCase());
+  if(already){ alert(name+' already logged. Use the trash icon in the table below to remove it.'); return; }
+  const today=new Date().toISOString().split('T')[0];
+  const nextDue=(NEXT_DOSE[ageGroup]||{})[name]||'';
+  c.vaccinations.push({date:today,vaccine:name,dose:'',provider:'',nextDue,notes:''});
+  save(); renderVacc(c);
+}
+
+// ══ MILESTONES ══
+const MS={
+  '2 months':{Motor:['Holds head up during tummy time','Makes smoother movements'],Social:['Smiles at people','Follows things with eyes'],Language:['Coos and gurgles','Turns toward sounds'],Cognitive:['Pays attention to faces','Shows boredom if activity doesn\'t change']},
+  '4 months':{Motor:['Holds head steady','Pushes down on legs when feet on surface','May roll tummy to back'],Social:['Smiles spontaneously','Likes to play with people'],Language:['Begins to babble','Cries differently for different needs'],Cognitive:['Responds to affection']},
+  '6 months':{Motor:['Rolls over both ways','Begins to sit without support'],Social:['Knows familiar faces','Likes to play with others'],Language:['Strings vowels when babbling','Makes sounds for joy and displeasure'],Cognitive:['Shows curiosity','Brings things to mouth']},
+  '9 months':{Motor:['Stands holding on','Gets into sitting position','Pulls to stand'],Social:['May fear strangers','Clingy with familiar adults'],Language:['Understands "no"','Makes many different sounds'],Cognitive:['Looks for hidden things','Plays peek-a-boo']},
+  '12 months':{Motor:['Gets to sitting without help','Walks holding furniture','May take a few steps alone'],Social:['Shy with strangers','Cries when parent leaves'],Language:['Says "mama" and "dada"','Tries to imitate words'],Cognitive:['Explores things in different ways','Finds hidden things easily']},
+  '18 months':{Motor:['Walks alone','May walk up steps'],Social:['Likes to hand things to others','Shows affection'],Language:['Says several single words','Points to show wants'],Cognitive:['Knows what objects are for','Points to body parts']},
+  '2 years':{Motor:['Stands on tiptoe','Kicks a ball','Begins to run'],Social:['Copies others','Shows increasing independence'],Language:['Says 2–4 word sentences','Follows 2-step instructions'],Cognitive:['Sorts by shapes and colors','Plays simple make-believe']},
+  '3 years':{Motor:['Climbs well','Runs easily','Pedals a tricycle'],Social:['Copies adults','Takes turns in games'],Language:['Strangers understand most words','Uses 2–3 sentence conversations'],Cognitive:['Does 3–4 piece puzzles','Understands "two"']},
+  '4 years':{Motor:['Hops on one foot','Catches a bounced ball'],Social:['Creative make-believe','Prefers to play with other children'],Language:['Knows basic grammar','Tells stories','Says first and last name'],Cognitive:['Names colors and numbers','Starts to understand time']},
+  '5 years':{Motor:['Stands on one foot 10+ seconds','Hops and may skip'],Social:['Wants to please friends','Agrees to rules'],Language:['Speaks clearly','Tells a simple story','Says name and address'],Cognitive:['Counts 10+ things','Draws a person with 6+ body parts']},
+};
+
+function renderMilestones(c){
+  if(!c.milestones) c.milestones={};
+  const ages=Object.keys(MS);
+  if(!curMsTab||!ages.includes(curMsTab)) curMsTab=ages[0];
+  document.getElementById('ms-tabs').innerHTML=ages.map(age=>{
+    const ms=c.milestones[age]||{};
+    const hasData=ms.checked&&Object.values(ms.checked).some(v=>v);
+    return '<div class="ms-tab '+(curMsTab===age?'active':'')+' '+(hasData?'done':'')+'" onclick="selMsTab(\''+age+'\')"><div class="ms-tab-lbl">'+age+'</div>'+(hasData?'<div style="font-size:9px;margin-top:2px;opacity:.8">✓</div>':'')+'</div>';
+  }).join('');
+  renderMsPanel(c,curMsTab);
+}
+function selMsTab(age){ const c=child();if(!c)return; curMsTab=age; renderMilestones(c); }
+function renderMsPanel(c,age){
+  const cats=MS[age]||{};
+  if(!c.milestones[age]) c.milestones[age]={checked:{},concern:{},comment:''};
+  const ms=c.milestones[age];
+  if(!ms.checked)ms.checked={}; if(!ms.concern)ms.concern={};
+  let html='';
+  Object.entries(cats).forEach(([cat,items])=>{
+    html+='<div style="margin-bottom:18px"><div class="ms-cat-title">'+cat+'</div>';
+    items.forEach((item,idx)=>{
+      const key=cat+'_'+idx;
+      const checked=!!ms.checked[key];
+      const concern=!!ms.concern[key];
+      html+='<div class="ms-item"><div class="ms-check '+(checked?'checked':'')+'" onclick="toggleMs(\''+age+'\',\''+key+'\')">'+(checked?'✓':'')+'</div><div class="ms-text">'+item+'<button class="concern-btn '+(concern?'flagged':'')+'" onclick="toggleConcern(\''+age+'\',\''+key+'\')">'+(concern?'⚠ Concern flagged':'+ Flag concern')+'</button></div></div>';
+    });
+    html+='</div>';
+  });
+  html+='<div style="margin-top:14px;padding-top:14px;border-top:1px solid #e2e8f0"><div style="font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.03em;margin-bottom:6px">Notes for '+age+'</div><textarea style="width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:9px;font-size:14px;font-family:Lato,sans-serif;min-height:75px;resize:vertical" onchange="saveMsCmt(\''+age+'\',this.value)" placeholder="Notes about milestones, concerns...">'+(ms.comment||'')+'</textarea></div><div style="display:flex;gap:8px;margin-top:10px;justify-content:flex-end"><button class="btn btn-sm" onclick="exportMs()">&#128196; Export summary</button></div>';
+  document.getElementById('ms-panel').innerHTML=html;
+}
+function toggleMs(age,key){ const c=child();if(!c)return; if(!c.milestones[age])c.milestones[age]={checked:{},concern:{},comment:''}; if(!c.milestones[age].checked)c.milestones[age].checked={}; c.milestones[age].checked[key]=!c.milestones[age].checked[key]; save();renderMilestones(c); }
+function toggleConcern(age,key){ const c=child();if(!c)return; if(!c.milestones[age])c.milestones[age]={checked:{},concern:{},comment:''}; if(!c.milestones[age].concern)c.milestones[age].concern={}; c.milestones[age].concern[key]=!c.milestones[age].concern[key]; save();renderMilestones(c); }
+function saveMsCmt(age,val){ const c=child();if(!c)return; if(!c.milestones[age])c.milestones[age]={checked:{},concern:{},comment:''}; c.milestones[age].comment=val; save(); }
+function exportMs(){ const c=child();if(!c)return; let t='MILESTONE SUMMARY — '+(c.name||'Child')+'\n'+'='.repeat(40)+'\n\n'; Object.entries(MS).forEach(([age,cats])=>{ const ms=c.milestones[age]||{}; t+=age.toUpperCase()+'\n'+'-'.repeat(30)+'\n'; let any=false; Object.entries(cats).forEach(([cat,items])=>{ items.forEach((item,idx)=>{ const k=cat+'_'+idx; if(ms.checked&&ms.checked[k]){t+='  ✓ ['+cat+'] '+item+'\n';any=true;} if(ms.concern&&ms.concern[k]){t+='  ⚠ CONCERN: ['+cat+'] '+item+'\n';any=true;} }); }); if(ms.comment)t+='  Notes: '+ms.comment+'\n'; if(!any&&!ms.comment)t+='  No data entered\n'; t+='\n'; }); const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([t],{type:'text/plain'})); a.download=((c.name||'child').replace(/\s/g,'_'))+'_milestones.txt'; a.click(); }
+
+// ══ WELL-CHILD VISITS ══
+const WC_VISITS=[{key:'newborn',label:'Newborn',sub:'1–5 days'},{key:'1mo',label:'1 mo',sub:''},{key:'2mo',label:'2 mo',sub:''},{key:'4mo',label:'4 mo',sub:''},{key:'6mo',label:'6 mo',sub:''},{key:'9mo',label:'9 mo',sub:''},{key:'12mo',label:'12 mo',sub:'1 yr'},{key:'15mo',label:'15 mo',sub:''},{key:'18mo',label:'18 mo',sub:''},{key:'24mo',label:'24 mo',sub:'2 yr'},{key:'30mo',label:'30 mo',sub:''},{key:'3yr',label:'3 yr',sub:''},{key:'4yr',label:'4 yr',sub:''},{key:'5yr',label:'5 yr',sub:''}];
+const DIET_OPTS=['Breastfeeding','Formula','Donor milk','Whole milk','2% milk','Plant-based milk','Baby food/purees','Soft solids','Table foods','BRAT foods','Pedialyte'];
+
+function renderWC(c){
+  if(!c.wcVisits) c.wcVisits={};
+  if(!curWcTab) curWcTab=WC_VISITS[0].key;
+  document.getElementById('wc-tabs').innerHTML=WC_VISITS.map(v=>{
+    const vd=c.wcVisits[v.key]||{}; const done=!!(vd.date||vd.notes);
+    return '<div class="wc-tab '+(curWcTab===v.key?'active':'')+' '+(done?'done':'')+'" onclick="selWcTab(\''+v.key+'\')"><div class="wc-tab-lbl">'+v.label+'</div>'+(v.sub?'<div class="wc-tab-sub">'+v.sub+'</div>':'')+(done?'<div style="font-size:9px;margin-top:2px;opacity:.8">✓</div>':'')+'</div>';
+  }).join('');
+  renderWcPanel(c,curWcTab);
+}
+function selWcTab(key){ const c=child();if(!c)return; curWcTab=key; renderWC(c); }
+
+function renderWcPanel(c,key){
+  if(!c.wcVisits) c.wcVisits={};
+  if(!c.wcVisits[key]) c.wcVisits[key]={date:'',provider:'',weight:'',height:'',headCirc:'',notes:'',feedingTypes:[],formulaBrand:'',feedFreq:'',feedAmt:'',dietNotes:'',foodReactions:[],photos:[]};
+  const v=c.wcVisits[key];
+  if(!v.feedingTypes)v.feedingTypes=[]; if(!v.foodReactions)v.foodReactions=[]; if(!v.photos)v.photos=[];
+  const visit=WC_VISITS.find(x=>x.key===key);
+  let html='<div style="font-family:Nunito,sans-serif;font-size:15px;font-weight:800;color:#1e3a5f;margin-bottom:14px">'+(visit?visit.label:key)+' Well-Child Visit</div>';
+  html+='<div class="wc-sec">Visit details</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div class="fg" style="margin:0"><label>Visit date</label><input type="date" value="'+(v.date||'')+'" onchange="saveWcF(\''+key+'\',\'date\',this.value)"></div><div class="fg" style="margin:0"><label>Provider</label><input type="text" value="'+(v.provider||'')+'" placeholder="Dr. name" onchange="saveWcF(\''+key+'\',\'provider\',this.value)"></div></div>';
+  html+='<div class="wc-sec">Measurements</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px"><div class="fg" style="margin:0"><label>Weight (lbs)</label><input type="text" value="'+(v.weight||'')+'" placeholder="e.g. 22" onchange="saveWcF(\''+key+'\',\'weight\',this.value)"></div><div class="fg" style="margin:0"><label>Height (in)</label><input type="text" value="'+(v.height||'')+'" placeholder="e.g. 32" onchange="saveWcF(\''+key+'\',\'height\',this.value)"></div><div class="fg" style="margin:0"><label>Head circ. (cm)</label><input type="text" value="'+(v.headCirc||'')+'" placeholder="cm" onchange="saveWcF(\''+key+'\',\'headCirc\',this.value)"></div></div>';
+  html+='<div class="wc-sec">Notes</div><textarea style="width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:9px;font-size:14px;font-family:Lato,sans-serif;min-height:80px;resize:vertical" onchange="saveWcF(\''+key+'\',\'notes\',this.value)" placeholder="Provider observations, concerns, referrals...">'+(v.notes||'')+'</textarea>';
+  html+='<div class="wc-sec">&#127860; Diet &amp; Feeding</div><div style="font-size:12px;color:#64748b;margin-bottom:8px">Select all feeding types currently used. Tap to toggle.</div>';
+  html+='<div class="diet-row">'+DIET_OPTS.map(opt=>'<div class="diet-btn '+(v.feedingTypes.includes(opt)?'active':'')+'" onclick="toggleDiet(\''+key+'\',\''+opt+'\')">'+opt+'</div>').join('')+'</div>';
+  html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px"><div class="fg" style="margin:0"><label>Formula brand</label><input type="text" value="'+(v.formulaBrand||'')+'" placeholder="e.g. Similac Pro-Advance" onchange="saveWcF(\''+key+'\',\'formulaBrand\',this.value)"></div><div class="fg" style="margin:0"><label>Feeding frequency</label><input type="text" value="'+(v.feedFreq||'')+'" placeholder="e.g. Every 3 hrs" onchange="saveWcF(\''+key+'\',\'feedFreq\',this.value)"></div></div>';
+  html+='<div class="fg"><label>Diet / food notes</label><textarea style="width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:9px;font-size:14px;font-family:Lato,sans-serif;min-height:65px;resize:vertical" onchange="saveWcF(\''+key+'\',\'dietNotes\',this.value)" placeholder="New foods, textures, appetite, concerns...">'+(v.dietNotes||'')+'</textarea></div>';
+  html+='<div class="wc-sec" style="color:#991b1b">&#9888; Food reactions</div>';
+  html+=v.foodReactions.map((r,ri)=>'<div class="reaction-card" style="position:relative;margin-bottom:9px"><button class="del-btn" style="position:absolute;top:9px;right:9px" onclick="delWcFR(\''+key+'\','+ri+')">&#128465;</button><div style="font-weight:700;font-size:13px;color:#9a3412">'+(r.food||'Food not specified')+'</div><div style="font-size:12px;color:#64748b;margin-top:2px">Reaction: '+(r.reaction||'—')+' · Severity: '+(r.severity||'—')+'</div>'+(r.notes?'<div style="font-size:12px;margin-top:4px;color:#475569">'+r.notes+'</div>':'')+(r.photos&&r.photos.length?'<div class="photo-grid" style="margin-top:6px">'+r.photos.map((p,pi)=>'<div class="photo-thumb"><img src="'+p+'"><button class="photo-del" onclick="delWcFRPhoto(\''+key+'\','+ri+','+pi+')">✕</button></div>').join('')+'</div>':'')+'</div>').join('');
+  html+='<button class="btn btn-sm" style="margin-bottom:16px" onclick="openFRModal(\'wc\',\''+key+'\')">+ Log food reaction</button>';
+  html+='<div class="wc-sec">&#128247; Photos</div><div class="photo-area" onclick="document.getElementById(\'wcph_'+key+'\').click()"><input type="file" id="wcph_'+key+'" accept="image/*" capture="environment" multiple style="display:none" onchange="addWcPhotos(\''+key+'\',this)"><div style="font-size:22px;margin-bottom:4px">&#128247;</div><div style="font-size:13px;color:#64748b;font-weight:700">Tap to upload or take a photo</div><div style="font-size:11px;color:#94a3b8;margin-top:2px">Works with phone camera or file upload</div></div>';
+  if(v.photos&&v.photos.length) html+='<div class="photo-grid" style="margin-top:9px">'+v.photos.map((p,pi)=>'<div class="photo-thumb"><img src="'+p+'"><button class="photo-del" onclick="delWcPhoto(\''+key+'\','+pi+')">✕</button></div>').join('')+'</div>';
+  document.getElementById('wc-panel').innerHTML=html;
+}
+
+function saveWcF(key,field,val){ const c=child();if(!c)return; if(!c.wcVisits)c.wcVisits={}; if(!c.wcVisits[key])c.wcVisits[key]={feedingTypes:[],foodReactions:[],photos:[]}; c.wcVisits[key][field]=val; save(); document.getElementById('wc-tabs').innerHTML=WC_VISITS.map(v=>{ const vd=c.wcVisits[v.key]||{}; const done=!!(vd.date||vd.notes); return '<div class="wc-tab '+(curWcTab===v.key?'active':'')+' '+(done?'done':'')+'" onclick="selWcTab(\''+v.key+'\')"><div class="wc-tab-lbl">'+v.label+'</div>'+(v.sub?'<div class="wc-tab-sub">'+v.sub+'</div>':'')+(done?'<div style="font-size:9px;margin-top:2px;opacity:.8">✓</div>':'')+'</div>'; }).join(''); }
+function toggleDiet(key,opt){ const c=child();if(!c)return; if(!c.wcVisits||!c.wcVisits[key])return; const arr=c.wcVisits[key].feedingTypes||[]; const idx=arr.indexOf(opt); if(idx>-1)arr.splice(idx,1); else arr.push(opt); save(); document.querySelector('.diet-row').innerHTML=DIET_OPTS.map(o=>'<div class="diet-btn '+(arr.includes(o)?'active':'')+'" onclick="toggleDiet(\''+key+'\',\''+o+'\')">'+o+'</div>').join(''); }
+function addWcPhotos(key,input){ const c=child();if(!c)return; if(!c.wcVisits[key].photos)c.wcVisits[key].photos=[]; Array.from(input.files).forEach(file=>{ const r=new FileReader(); r.onload=e=>{ c.wcVisits[key].photos.push(e.target.result); save(); renderWcPanel(c,key); }; r.readAsDataURL(file); }); }
+function delWcPhoto(key,pi){ const c=child();if(!c)return; c.wcVisits[key].photos.splice(pi,1); save(); renderWcPanel(c,key); }
+function delWcFR(key,ri){ const c=child();if(!c)return; c.wcVisits[key].foodReactions.splice(ri,1); save(); renderWcPanel(c,key); }
+function delWcFRPhoto(key,ri,pi){ const c=child();if(!c)return; c.wcVisits[key].foodReactions[ri].photos.splice(pi,1); save(); renderWcPanel(c,key); }
+
+// Food reaction modal
+let frCtx=null, frKey=null, frPhotos=[];
+function openFRModal(ctx,key){ frCtx=ctx; frKey=key; frPhotos=[]; document.getElementById('modal-title').textContent='Log food reaction'; document.getElementById('modal-body').innerHTML='<div class="fg"><label>Food / ingredient</label><input type="text" id="fr_food" placeholder="e.g. Peanuts, strawberries, eggs"></div><div class="fg"><label>Reaction observed</label><input type="text" id="fr_reaction" placeholder="e.g. Hives, vomiting, swelling, rash"></div><div class="fg"><label>Severity</label><select id="fr_severity"><option>Mild</option><option>Moderate</option><option>Severe</option></select></div><div class="fg"><label>Notes</label><textarea id="fr_notes" style="min-height:55px" placeholder="When it appeared, how long it lasted..."></textarea></div><div class="fg"><label>Photos of reaction</label><div class="photo-area" onclick="document.getElementById(\'fr_ph\').click()"><input type="file" id="fr_ph" accept="image/*" capture="environment" multiple style="display:none" onchange="addFrPh(this)"><div style="font-size:20px;margin-bottom:3px">&#128247;</div><div style="font-size:13px;color:#64748b;font-weight:700">Upload photo of reaction</div></div><div id="fr_ph_prev" class="photo-grid" style="margin-top:7px"></div></div>'; modalSec='_fr'; document.getElementById('modal-bg').style.display='flex'; }
+function addFrPh(input){ Array.from(input.files).forEach(file=>{ const r=new FileReader(); r.onload=e=>{ frPhotos.push(e.target.result); document.getElementById('fr_ph_prev').innerHTML=frPhotos.map(p=>'<div class="photo-thumb"><img src="'+p+'" style="width:100%;height:100%;object-fit:cover"></div>').join(''); }; r.readAsDataURL(file); }); }
+function saveFR(){ const c=child();if(!c)return; const data={food:(document.getElementById('fr_food')||{}).value||'',reaction:(document.getElementById('fr_reaction')||{}).value||'',severity:(document.getElementById('fr_severity')||{}).value||'',notes:(document.getElementById('fr_notes')||{}).value||'',photos:[...frPhotos]}; if(frCtx==='wc'){ if(!c.wcVisits[frKey].foodReactions)c.wcVisits[frKey].foodReactions=[]; c.wcVisits[frKey].foodReactions.push(data); save(); closeModal(); renderWcPanel(c,frKey); } }
+
+// ══ SICK VISITS ══
+function renderSick(c){
+  const data=c.sick||[];
+  const el=document.getElementById('sick-list');
+  if(!data.length){el.innerHTML='<div style="text-align:center;padding:28px;color:#94a3b8;font-size:13px">No sick visits recorded. Click "+ Add sick visit" above.</div>';return;}
+  el.innerHTML=[...data].reverse().map((r,ri)=>{
+    const i=data.length-1-ri;
+    const ftags=(r.feedingTypes||[]).map(f=>'<span class="food-tag">'+f+'</span>').join('');
+    return '<div class="sick-card"><div class="sick-card-hdr"><div><div style="font-family:Nunito,sans-serif;font-size:14px;font-weight:800;color:#1e3a5f">'+(r.date||'No date')+'</div><div style="font-size:13px;color:#64748b;margin-top:2px">'+(r.reason||'—')+'</div></div><button class="del-btn" onclick="DEL_SICK('+i+')">&#128465;</button></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;font-size:13px;margin-bottom:8px"><div><span style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase">Provider</span><br>'+(r.provider||'—')+'</div><div><span style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase">Temp</span><br>'+(r.temp||'—')+'</div><div><span style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase">Symptoms</span><br>'+(r.symptoms||'—')+'</div><div><span style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase">Treatment</span><br>'+(r.treatment||'—')+'</div></div>'+(ftags?'<div style="margin-top:7px;padding-top:7px;border-top:1px solid #f1f5f9"><span style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase">Feeding:</span><div style="margin-top:4px">'+ftags+'</div></div>':'')+(r.dietNotes?'<div style="font-size:12px;color:#475569;margin-top:5px"><strong>Diet notes:</strong> '+r.dietNotes+'</div>':'')+(r.notes?'<div style="margin-top:9px;padding-top:9px;border-top:1px solid #f1f5f9;font-size:13px;color:#475569">'+r.notes+'</div>':'')+(r.photos&&r.photos.length?'<div style="margin-top:8px;padding-top:8px;border-top:1px solid #f1f5f9"><div class="photo-grid">'+r.photos.map((p,pi)=>'<div class="photo-thumb"><img src="'+p+'"><button class="photo-del" onclick="delSickPhoto('+i+','+pi+')">✕</button></div>').join('')+'</div></div>':'')+'</div>';
+  }).join('');
+}
+function delSickPhoto(i,pi){ const c=child();if(!c)return; c.sick[i].photos.splice(pi,1); save(); renderSick(c); }
+
+// ══ GENERIC TABLE SECTIONS ══
+const TBL={
+  specialists:[{h:'Date',k:'date'},{h:'Specialist',k:'specialist'},{h:'Specialty',k:'specialty'},{h:'Reason',k:'reason'},{h:'Findings',k:'findings'},{h:'Follow-up',k:'followUp'}],
+  urgent:[{h:'Date',k:'date'},{h:'Facility',k:'facility'},{h:'Type',k:'type'},{h:'Reason',k:'reason'},{h:'Treatment',k:'treatment'},{h:'Outcome',k:'outcome'}],
+  medications:[{h:'Name',k:'name'},{h:'Dosage',k:'dosage'},{h:'Frequency',k:'frequency'},{h:'Start',k:'startDate'},{h:'End',k:'endDate'},{h:'Prescriber',k:'prescriber'},{h:'Status',k:'status',r:statusBadge}],
+};
+function renderTable(sec,c){
+  const cols=TBL[sec];if(!cols)return;
+  const data=c[sec]||[];
+  const tb=document.getElementById('tb-'+sec);if(!tb)return;
+  if(!data.length){tb.innerHTML='<tr class="empty-row"><td colspan="'+(cols.length+1)+'">No records yet. Click "+ Add Record" to begin.</td></tr>';return;}
+  tb.innerHTML=data.map((row,i)=>'<tr>'+cols.map(col=>'<td>'+(col.r?col.r(row[col.k]||''):(row[col.k]||'—'))+'</td>').join('')+'<td><button class="del-btn" onclick="DEL(\''+sec+'\','+i+')">&#128465;</button></td></tr>').join('');
+}
+
+// ══ ALLERGIES ══
+function switchAllergyTab(tab){ curAllergyTab=tab; document.querySelectorAll('.allergy-tab').forEach(el=>el.classList.remove('active')); const el=document.getElementById('atab-'+tab); if(el)el.classList.add('active'); renderAllergyPanel(child()); }
+function renderAllergyPanel(c){
+  if(!c)return;
+  const panel=document.getElementById('allergy-panel');if(!panel)return;
+  const tab=curAllergyTab;
+  const typeMap={medication:['Medication'],food:['Food'],environmental:['Environmental','Insect','Contact','Other','Plant']};
+  const types=typeMap[tab]||[];
+  const all=(c.allergies||[]).map((r,i)=>({...r,_i:i})).filter(r=>types.includes(r.type));
+  const labels={medication:'Add medication allergy',food:'Add food allergy',environmental:'Add environmental allergy'};
+  const showSubtype=tab==='environmental';
+  const cols=showSubtype?[{h:'Allergen',k:'allergen'},{h:'Sub-type',k:'subtype'},{h:'Severity',k:'severity',r:sevBadge},{h:'Reaction',k:'reaction'},{h:'Diagnosed',k:'diagnosed'},{h:'Treatment',k:'treatment'}]:[{h:'Allergen',k:'allergen'},{h:'Severity',k:'severity',r:sevBadge},{h:'Reaction',k:'reaction'},{h:'Diagnosed',k:'diagnosed'},{h:'Treatment',k:'treatment'}];
+  let html='<div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button class="btn btn-primary btn-sm" onclick="openAllergyModal(\''+tab+'\')">+ '+labels[tab]+'</button></div>';
+  if(!all.length){ html+='<div style="text-align:center;padding:24px;color:#94a3b8;font-size:13px">No '+tab+' allergies recorded yet.</div>'; }
+  else{
+    html+='<div class="tbl-wrap"><table><thead><tr>'+cols.map(col=>'<th>'+col.h+'</th>').join('')+'<th></th></tr></thead><tbody>';
+    html+=all.map(row=>'<tr>'+cols.map(col=>'<td>'+(col.r?col.r(row[col.k]||''):(row[col.k]||'—'))+'</td>').join('')+'<td><button class="del-btn" onclick="DEL_ALLERGY('+row._i+')">&#128465;</button></td></tr>').join('');
+    html+='</tbody></table></div>';
+  }
+  if(tab==='food'){
+    const allFR=[];
+    (c.sick||[]).forEach(s=>{(s.foodReactions||[]).forEach(fr=>{allFR.push({...fr,visitDate:s.date,visitReason:s.reason||'Sick visit'});});});
+    Object.entries(c.wcVisits||{}).forEach(([key,v])=>{(v.foodReactions||[]).forEach(fr=>{allFR.push({...fr,visitDate:v.date||key,visitReason:'Well-child visit'});});});
+    if(allFR.length){ html+='<div style="margin-top:18px;padding-top:14px;border-top:2px solid #e2e8f0"><div style="font-family:Nunito,sans-serif;font-size:13px;font-weight:800;color:#991b1b;margin-bottom:10px">&#9888; Food reactions logged during visits (reference)</div>'+allFR.map(fr=>'<div class="reaction-card" style="margin-bottom:8px"><div style="font-weight:700;font-size:13px;color:#9a3412">'+(fr.food||'Food not specified')+'</div><div style="font-size:12px;color:#64748b;margin-top:2px">Reaction: '+(fr.reaction||'—')+' · Severity: '+(fr.severity||'—')+'</div><div style="font-size:11px;color:#94a3b8;margin-top:2px">Visit: '+(fr.visitDate||'—')+' — '+fr.visitReason+'</div>'+(fr.notes?'<div style="font-size:12px;margin-top:4px;color:#475569">'+fr.notes+'</div>':'')+'</div>').join('')+'</div>'; }
+  }
+  panel.innerHTML=html;
+}
+function openAllergyModal(tab){
+  modalSec='allergies_'+tab;
+  const titles={medication:'Add medication allergy',food:'Add food allergy',environmental:'Add environmental allergy'};
+  const typeVal={medication:'Medication',food:'Food',environmental:'Environmental'}[tab];
+  const ph={medication:'e.g. Penicillin, Amoxicillin',food:'e.g. Peanuts, Eggs, Milk',environmental:'e.g. Pollen, Pet dander, Dust mites'};
+  const subtypeField=tab==='environmental'?'<div class="fg"><label>Environmental sub-type</label><select id="f_subtype"><option>Environmental (general)</option><option>Insect (bee, wasp)</option><option>Plant (poison ivy, oak)</option><option>Contact (latex, metal)</option><option>Dust / dust mites</option><option>Pet dander</option><option>Pollen / seasonal</option><option>Mold</option><option>Other</option></select></div>':'<input type="hidden" id="f_subtype" value="">';
+  document.getElementById('modal-title').textContent=titles[tab];
+  document.getElementById('modal-body').innerHTML='<input type="hidden" id="f_type" value="'+typeVal+'">'+subtypeField+'<div class="fg"><label>Allergen</label><input type="text" id="f_allergen" placeholder="'+ph[tab]+'"></div><div class="fg"><label>Severity</label><select id="f_severity"><option>Mild</option><option>Moderate</option><option>Severe</option></select></div><div class="fg"><label>Reaction description</label><input type="text" id="f_reaction" placeholder="e.g. Hives, rash, swelling"></div><div class="fg"><label>Date diagnosed</label><input type="date" id="f_diagnosed"></div><div class="fg"><label>Treatment</label><input type="text" id="f_treatment" placeholder="e.g. EpiPen, avoidance, Benadryl"></div><div class="fg"><label>Notes</label><textarea id="f_notes" style="min-height:55px"></textarea></div>';
+  document.getElementById('modal-bg').style.display='flex';
+}
+
+// ══ MODAL FORMS ══
+const FORMS={
+  profile:[{k:'name',l:'Full name',t:'text'},{k:'dob',l:'Date of birth',t:'date'},{k:'gender',l:'Gender',t:'select',o:['Male','Female','Other','Prefer not to say']},{k:'bloodType',l:'Blood type',t:'select',o:['A+','A-','B+','B-','AB+','AB-','O+','O-','Unknown']},{k:'pediatrician',l:'Pediatrician name',t:'text'},{k:'insurance',l:'Insurance plan',t:'text'},{k:'notes',l:'Additional notes',t:'textarea'}],
+  growth:[{k:'date',l:'Date',t:'date'},{k:'weight',l:'Weight (lbs)',t:'text'},{k:'height',l:'Height (inches)',t:'text'},{k:'headCirc',l:'Head circumference (cm)',t:'text'},{k:'notes',l:'Notes',t:'textarea'}],
+  vaccinations:[{k:'date',l:'Date given',t:'date'},{k:'vaccine',l:'Vaccine name',t:'select',o:['HepB (1st)','HepB (2nd)','HepB (3rd)','RV (1st)','RV (2nd)','RV (3rd)','DTaP (1st)','DTaP (2nd)','DTaP (3rd)','DTaP (4th)','DTaP (5th)','Hib (1st)','Hib (2nd)','Hib (3rd)','Hib (4th)','PCV (1st)','PCV (2nd)','PCV (3rd)','PCV (4th)','IPV (1st)','IPV (2nd)','IPV (3rd)','IPV (4th)','Flu (annual)','MMR (1st)','MMR (2nd)','Varicella (1st)','Varicella (2nd)','HepA (1st)','HepA (2nd)','COVID-19','Other']},{k:'dose',l:'Dose number',t:'select',o:['1st','2nd','3rd','4th','5th','Booster','Annual']},{k:'provider',l:'Provider / clinic',t:'text'},{k:'nextDue',l:'Next dose due',t:'text'},{k:'notes',l:'Notes',t:'textarea'}],
+  sick:[{k:'date',l:'Visit date',t:'date'},{k:'provider',l:'Provider / clinic',t:'text'},{k:'reason',l:'Reason for visit',t:'text'},{k:'temp',l:'Temperature (°F)',t:'text'},{k:'symptoms',l:'Symptoms',t:'textarea'},{k:'treatment',l:'Treatment / prescription',t:'text'},{k:'notes',l:'Notes / outcome',t:'textarea'}],
+  specialists:[{k:'date',l:'Visit date',t:'date'},{k:'specialist',l:'Specialist name',t:'text'},{k:'specialty',l:'Specialty',t:'select',o:['Cardiology','Dermatology','ENT','Gastroenterology','Neurology','Ophthalmology','Orthopedics','Pulmonology','Developmental Pediatrics','Speech Therapy','Occupational Therapy','Physical Therapy','Other']},{k:'reason',l:'Reason for referral',t:'text'},{k:'findings',l:'Findings',t:'text'},{k:'followUp',l:'Follow-up',t:'text'},{k:'notes',l:'Notes',t:'textarea'}],
+  urgent:[{k:'date',l:'Date',t:'date'},{k:'facility',l:'Facility name',t:'text'},{k:'type',l:'Visit type',t:'select',o:['Urgent Care','Emergency Room','After-hours clinic','Telehealth']},{k:'reason',l:'Reason / complaint',t:'text'},{k:'treatment',l:'Treatment received',t:'text'},{k:'outcome',l:'Outcome',t:'text'},{k:'notes',l:'Notes',t:'textarea'}],
+  medications:[{k:'name',l:'Medication name',t:'text'},{k:'dosage',l:'Dosage',t:'text'},{k:'frequency',l:'Frequency',t:'text'},{k:'startDate',l:'Start date',t:'date'},{k:'endDate',l:'End date (if applicable)',t:'date'},{k:'prescriber',l:'Prescriber',t:'text'},{k:'status',l:'Status',t:'select',o:['Active','Completed','Discontinued']},{k:'notes',l:'Notes',t:'textarea'}],
+};
+
+function openModal(sec){
+  modalSec=sec; modalPhotos=[];
+  const isNew=sec==='_new', isProf=sec==='profile';
+  document.getElementById('modal-title').textContent=isNew?'Add child':isProf?'Edit profile':'Add '+(TITLES[sec]||sec)+' record';
+  const fKey=isNew?'profile':sec;
+  const fields=FORMS[fKey]||[];
+  const existing=isProf?(child()||{}):{};
+  let html=fields.map(f=>{
+    const v=existing[f.k]||'';
+    if(f.t==='textarea')return '<div class="fg"><label>'+f.l+'</label><textarea id="f_'+f.k+'">'+v+'</textarea></div>';
+    if(f.t==='select')return '<div class="fg"><label>'+f.l+'</label><select id="f_'+f.k+'">'+f.o.map(o=>'<option'+(o===v?' selected':'')+'>'+o+'</option>').join('')+'</select></div>';
+    return '<div class="fg"><label>'+f.l+'</label><input type="'+f.t+'" id="f_'+f.k+'" value="'+v+'"></div>';
+  }).join('');
+  if(sec==='sick') html+='<div class="fg"><label>Photos (optional)</label><div class="photo-area" onclick="document.getElementById(\'sick_ph\').click()"><input type="file" id="sick_ph" accept="image/*" capture="environment" multiple style="display:none" onchange="addModalPh(this)"><div style="font-size:20px;margin-bottom:3px">&#128247;</div><div style="font-size:12px;color:#64748b;font-weight:700">Upload or take a photo</div></div><div id="modal_ph_prev" class="photo-grid" style="margin-top:7px"></div></div>';
+  closeDrop();
+  document.getElementById('modal-body').innerHTML=html;
+  document.getElementById('modal-bg').style.display='flex';
+}
+
+function addModalPh(input){ Array.from(input.files).forEach(file=>{ const r=new FileReader(); r.onload=e=>{ modalPhotos.push(e.target.result); const prev=document.getElementById('modal_ph_prev'); if(prev)prev.innerHTML=modalPhotos.map(p=>'<div class="photo-thumb"><img src="'+p+'" style="width:100%;height:100%;object-fit:cover"></div>').join(''); }; r.readAsDataURL(file); }); }
+function closeModal(){ document.getElementById('modal-bg').style.display='none'; modalSec=null; modalPhotos=[]; frPhotos=[]; frCtx=null; frKey=null; }
+function bgClick(e){ if(e.target===document.getElementById('modal-bg')) closeModal(); }
+
+function saveModal(){
+  if(modalSec==='_fr'){ saveFR(); return; }
+  if(modalSec&&modalSec.startsWith('allergies_')){
+    const c=child();if(!c)return;
+    if(!c.allergies)c.allergies=[];
+    const allergyData={allergen:(document.getElementById('f_allergen')||{}).value||'',type:(document.getElementById('f_type')||{}).value||'',subtype:(document.getElementById('f_subtype')||{}).value||'',severity:(document.getElementById('f_severity')||{}).value||'',reaction:(document.getElementById('f_reaction')||{}).value||'',diagnosed:(document.getElementById('f_diagnosed')||{}).value||'',treatment:(document.getElementById('f_treatment')||{}).value||'',notes:(document.getElementById('f_notes')||{}).value||''};
+    c.allergies.push(allergyData); save(); renderAllergyPanel(c); closeModal(); return;
+  }
+  const sec=modalSec;
+  const fKey=sec==='_new'?'profile':sec;
+  const fields=FORMS[fKey]||[];
+  const data={};
+  fields.forEach(f=>{ const el=document.getElementById('f_'+f.k); if(el)data[f.k]=el.value; });
+  if(sec==='sick'){data.photos=[...modalPhotos];data.feedingTypes=[];data.foodReactions=[];}
+  if(sec==='_new'){ const id='c'+Date.now(); const c=mkChild(id); Object.assign(c,data); db.children.push(c); save(); selectChild(id); }
+  else if(sec==='profile'){ const c=child(); if(c){Object.assign(c,data);save();} document.getElementById('active-lbl').textContent=data.name||'Unnamed'; go('profile'); }
+  else{ const c=child(); if(c){if(!c[sec])c[sec]=[];c[sec].push(data);save();} go(sec); }
+  closeModal();
+}
+
+// ══ SICK DAY REFERENCE ══
+function renderSickRef(){
+  const tabs=[{k:'fever',l:'&#129322; Fever Guide'},{k:'dosing',l:'&#128138; Medication Dosing'},{k:'symptoms',l:'&#128203; Call vs. ER'},{k:'kit',l:'&#129520; Sick Day Kit'},{k:'emergency',l:'&#128680; Emergency Contacts'}];
+  const FOOT='<div style="margin-top:12px;padding-top:10px;border-top:1px solid #e2e8f0;font-size:10px;color:#94a3b8;text-align:center">For educational purposes only · Family Nurse Practitioner, FNP-C · Based on AAP &amp; Bright Futures Guidelines · Always follow your provider\'s advice</div>';
+  const panels={
+    fever:'<div class="card"><div class="poison-banner">&#128680; Poison Control: 1-800-222-1222 · Save this number now</div><div class="ref-alert ref-alert-blue"><strong>What counts as a fever:</strong> 100.4°F (38°C) or higher — rectal is most accurate under 3 months.</div><div class="ref-sec">&#127777;&#65039; Age-Based Fever Action Guide</div><div class="tbl-wrap"><table class="fever-tbl"><thead><tr><th>Child\'s Age</th><th>Temperature</th><th>Action</th></tr></thead><tbody><tr class="er"><td><strong>Under 2 months</strong></td><td>ANY 100.4°F+</td><td>&#128680; <strong>CALL or GO TO ER immediately — do not wait</strong></td></tr><tr class="call"><td><strong>2 months – 2 years</strong></td><td>Under 104°F, acting OK</td><td>&#128222; Call pediatrician same day</td></tr><tr class="er"><td><strong>2 months – 2 years</strong></td><td>Over 104°F or very ill</td><td>&#128680; Call immediately or go to ER now</td></tr><tr class="watch"><td><strong>Over 2 years</strong></td><td>Under 104°F, alert &amp; drinking</td><td>&#128064; Monitor at home — call if fever lasts more than 3 days</td></tr><tr class="er"><td><strong>Any age</strong></td><td>105°F or higher</td><td>&#128680; <strong>Go to ER now — do not wait</strong></td></tr></tbody></table></div><div class="ref-alert ref-alert-red"><strong>&#128680; GO TO THE ER RIGHT NOW IF:</strong><br>• Under 2 months with ANY fever<br>• Won\'t wake up or very hard to rouse<br>• Lips or fingernails look bluish<br>• Difficulty breathing or fast breathing at rest<br>• Stiff neck, bad headache, or light sensitivity<br>• Rash that does NOT turn white when pressed<br>• Seizure of any kind — even a first one</div><div class="ref-alert ref-alert-yellow"><strong>Remember:</strong> Watch the child — not the number. A playful child with 104°F can be less worrying than a limp, unresponsive child with 101°F.</div>'+FOOT+'</div>',
+    dosing:'<div class="card"><div class="ref-alert ref-alert-red"><strong>Always dose by your child\'s CURRENT WEIGHT — never by age alone.</strong> Confirm concentration on the bottle before each dose.</div><div class="ref-sec">Acetaminophen (Tylenol) — Every 4–6 hrs · Ages 2 months+ · Max 5 doses/24 hrs</div><div class="tbl-wrap"><table class="dose-tbl"><thead><tr><th>Weight (lbs)</th><th>Weight (kg)</th><th>Infant Tylenol 160mg/5mL</th><th>Children\'s Tylenol 160mg/5mL</th></tr></thead><tbody><tr><td>6–11</td><td>2.7–5</td><td>1.25 mL</td><td>—</td></tr><tr><td>12–17</td><td>5.5–7.7</td><td>2.5 mL</td><td>—</td></tr><tr><td>18–23</td><td>8–10.5</td><td>3.75 mL</td><td>—</td></tr><tr><td>24–35</td><td>11–15.9</td><td>5 mL</td><td>5 mL</td></tr><tr><td>36–47</td><td>16–21</td><td>—</td><td>7.5 mL</td></tr><tr><td>48–59</td><td>22–26</td><td>—</td><td>10 mL</td></tr><tr><td>60–71</td><td>27–32</td><td>—</td><td>12.5 mL</td></tr><tr><td>72–83</td><td>33–37</td><td>—</td><td>15 mL</td></tr><tr><td>84–95</td><td>38–43</td><td>—</td><td>17.5 mL</td></tr></tbody></table></div><div class="ref-sec">Ibuprofen (Motrin/Advil) — Every 6–8 hrs · Ages 6 months+ · Give with food</div><div class="tbl-wrap"><table class="dose-tbl"><thead><tr><th>Weight (lbs)</th><th>Weight (kg)</th><th>Infant Motrin 50mg/1.25mL</th><th>Children\'s Motrin 100mg/5mL</th></tr></thead><tbody><tr><td>18–23</td><td>8–10.5</td><td>1.25 mL</td><td>—</td></tr><tr><td>24–35</td><td>11–15.9</td><td>1.875 mL</td><td>5 mL</td></tr><tr><td>36–47</td><td>16–21</td><td>—</td><td>7.5 mL</td></tr><tr><td>48–59</td><td>22–26</td><td>—</td><td>10 mL</td></tr><tr><td>60–71</td><td>27–32</td><td>—</td><td>12.5 mL</td></tr><tr><td>72–83</td><td>33–37</td><td>—</td><td>15 mL</td></tr><tr><td>84–95</td><td>38–43</td><td>—</td><td>17.5 mL</td></tr></tbody></table></div><div class="ref-alert ref-alert-red"><strong>NEVER give aspirin to a child.</strong> Do not alternate Tylenol and Motrin on a set schedule unless your provider directs you to.</div>'+FOOT+'</div>',
+    symptoms:'<div class="card"><div class="ref-alert ref-alert-blue">Use this guide when you\'re not sure what to do — and <strong>trust your gut</strong>. If something feels very wrong, go in.</div><div class="tbl-wrap"><table class="fever-tbl"><thead><tr><th>Symptom</th><th style="background:#166534">&#128064; Watch at home</th><th style="background:#854d0e">&#128222; Call pediatrician</th><th style="background:#991b1b">&#128680; Go to ER now</th></tr></thead><tbody><tr><td><strong>Fever</strong></td><td class="watch">Over 2 yrs, under 104°F, alert</td><td class="call">Any fever under 2 yrs, fever over 3 days</td><td class="er">Under 2 months ANY fever, over 105°F, seizure</td></tr><tr><td><strong>Vomiting</strong></td><td class="watch">Under 24 hrs, holding fluids</td><td class="call">Over 24 hrs infant; 48 hrs older child</td><td class="er">Blood in vomit, lethargic, dehydration</td></tr><tr><td><strong>Diarrhea</strong></td><td class="watch">Mild, hydrated, no blood</td><td class="call">5+ loose stools/day, mild dehydration</td><td class="er">Blood in stool, severe dehydration, infant under 3 mo</td></tr><tr><td><strong>Croup</strong></td><td class="watch">Mild barking cough, breathing OK</td><td class="call">Worsening, not improved with cool air</td><td class="er">Stridor at rest, retractions, bluish lips</td></tr><tr><td><strong>Rash</strong></td><td class="watch">Mild hives, turns white when pressed</td><td class="call">Spreading rash, hives with swelling</td><td class="er">Rash does NOT turn white — ER now</td></tr><tr><td><strong>Breathing</strong></td><td class="watch">Mild congestion, breathing OK at rest</td><td class="call">Fast breathing, persistent wheezing</td><td class="er">Retractions, blue lips, grunting, stridor</td></tr></tbody></table></div><div class="ref-alert ref-alert-red"><strong>Dehydration warning signs:</strong> No wet diaper in 8 hrs · No tears when crying · Dry/cracked lips · Sunken eyes · Extremely sleepy or hard to wake</div><div class="ref-alert ref-alert-green"><strong>When in doubt — call your pediatrician.</strong> No question is too small. Trust your gut — you know your child.</div>'+FOOT+'</div>',
+    kit:'<div class="card"><div class="ref-alert ref-alert-blue">Build your kit <strong>before you need it</strong> — so you\'re never searching at 2 AM. Check expiration dates every 6 months.</div><div class="kit-cat">&#128138; Medications</div>'+['Acetaminophen (Tylenol) — infant or children\'s','Ibuprofen (Motrin/Advil) — ages 6 months+','Oral rehydration solution (Pedialyte)','Nasal saline drops or spray','Antihistamine (ask your pediatrician)','Hydrocortisone 1% cream','Petroleum jelly'].map(i=>'<div class="chk-item"><div class="chk-circle">✓</div><div>'+i+'</div></div>').join('')+'<div class="kit-cat">&#128295; Tools</div>'+['Digital thermometer (rectal for infants, temporal/oral for toddlers)','Bulb syringe or NoseFrida nasal aspirator','Cool-mist humidifier (cleaned weekly)','Measuring syringe for medications','Disposable gloves'].map(i=>'<div class="chk-item"><div class="chk-circle">✓</div><div>'+i+'</div></div>').join('')+'<div class="kit-cat">&#127860; Feeding during illness</div>'+['Pedialyte — small sips, often','Breastfeed on demand — continue through illness','BRAT foods: banana, rice, applesauce, toast','Avoid juice and sports drinks for young infants','Popsicles — hydration and sore throat relief','Reintroduce normal foods after 6 hrs with no vomiting'].map(i=>'<div class="chk-item"><div class="chk-circle">✓</div><div>'+i+'</div></div>').join('')+FOOT+'</div>',
+    emergency:'<div class="card"><div class="poison-banner">&#128680; Poison Control: 1-800-222-1222 · Save this in your phone right now</div><div class="ref-alert ref-alert-red">Fill in your emergency contacts below. Saved to this device only. Print and post on your refrigerator.</div><div class="emerg-box"><h4>&#128222; Emergency Numbers</h4>'+[{l:'Pediatrician main line',k:'e_ped_main'},{l:'Pediatrician after-hours',k:'e_ped_after'},{l:'Nearest children\'s ER',k:'e_er'},{l:'Nearest urgent care (kids)',k:'e_uc'},{l:'Pharmacy',k:'e_pharm'},{l:'Insurance member services',k:'e_ins'}].map(f=>'<div class="emerg-row"><span>'+f.l+'</span><input type="tel" placeholder="Enter number" value="'+(localStorage.getItem(f.k)||'')+'" onchange="localStorage.setItem(\''+f.k+'\',this.value)"></div>').join('')+'</div><div class="ref-alert ref-alert-green">&#128247; Screenshot or print this page and keep a copy on your refrigerator and in your car.</div><div style="text-align:right;margin-top:8px"><button class="btn btn-primary btn-sm" onclick="doPrint()">&#128438; Print (Ctrl+P / &#8984;+P)</button></div>'+FOOT+'</div>',
+  };
+  document.getElementById('sickref-content').innerHTML=
+    '<div style="background:#fff;border:2px solid #1e3a5f;border-radius:12px;padding:15px 18px;margin-bottom:16px;font-size:13px;line-height:1.7"><div style="font-family:Nunito,sans-serif;font-size:13px;font-weight:800;color:#1e3a5f;margin-bottom:5px">&#128209; Educational Use Only</div>This guide is for <strong>educational and informational purposes only</strong>. It does not replace the professional judgment or care of your child\'s primary care provider. In an emergency call 911 or go to your nearest ER immediately.<br><span style="font-size:10px;color:#64748b">Created by a Family Nurse Practitioner, FNP-C · Based on AAP &amp; Bright Futures Guidelines</span></div>'+
+    '<div class="ref-tabs">'+tabs.map(t=>'<div class="ref-tab '+(curRefTab===t.k?'active':'')+'" onclick="switchRef(\''+t.k+'\')">'+t.l+'</div>').join('')+'</div>'+
+    '<div id="ref-panel">'+(panels[curRefTab]||'')+'</div>';
+}
+function switchRef(k){ curRefTab=k; renderSickRef(); }
+
+// ══ PRINT ══
+function doPrint(){ const m=document.createElement('div'); m.style.cssText='position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#1e3a5f;color:#fff;padding:11px 20px;border-radius:10px;font-size:13px;z-index:9999;text-align:center;line-height:1.6'; m.innerHTML='&#128438; Opening print dialog&hellip;<br><span style="font-size:11px;opacity:.8">Choose <strong>Save as PDF</strong> to save a copy</span>'; document.body.appendChild(m); setTimeout(()=>{ window.print(); setTimeout(()=>{ if(document.body.contains(m))document.body.removeChild(m); },1500); },400); }
+
+// ══ INIT ══
+if(db.activeId && child()){
+  document.getElementById('active-lbl').textContent=child().name||'Unnamed';
+  document.getElementById('no-child').style.display='none';
+  go('overview');
+}
+
+</script>
+</body>
+</html>
